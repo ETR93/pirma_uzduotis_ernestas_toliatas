@@ -52,14 +52,30 @@ class GetData:
         This method returns forecast data as pandas dataFrame from the meteo.lt API.
         :return:
         """
-        response_data = {}
+        data_frame_list = []
         now = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d')
         date_after_week = datetime.datetime.strftime(datetime.datetime.now() + datetime.timedelta(7), '%Y-%m-%d')
-        dates = pd.date_range(start=now, end=date_after_week, tz='UTC')
-        for date in dates:
-            response = requests.get("https://api.meteo.lt/v1/places/{0}/forecasts/long-term".format(self.place_code))
-            if response.status_code == 404:
-                return "Invalid place code"
-            response_data.update({date.strftime('%Y-%m-%d'): response.json()})
-        response_data = pd.DataFrame(response_data)
+        response = requests.get("https://api.meteo.lt/v1/places/{0}/forecasts/long-term".format(self.place_code))
+        if response.status_code == 404:
+            return "Invalid place code"
+        response = response.json()
+        place_info = {
+            "place_code": response['place']["code"],
+            "place_name": response['place']["name"],
+            "administrativeDivision": response['place']["administrativeDivision"],
+            "country": response['place']["country"],
+            "countryCode": response['place']["countryCode"],
+            "latitude": response['place']["coordinates"]["latitude"],
+            "longitude": response['place']["coordinates"]["longitude"],
+            "forecastType": response["forecastType"],
+            "forecastCreationTimeUtc": response["forecastCreationTimeUtc"]
+        }
+
+        for forecast in response["forecastTimestamps"]:
+            row = {**forecast, **place_info}
+            data_frame_list.append(row)
+
+        response_data = pd.DataFrame(data_frame_list)
+        response_data["forecastTimeUtc"] = pd.to_datetime(response_data["forecastTimeUtc"])
+        response_data["date"] = response_data["forecastTimeUtc"].dt.strftime("%Y-%m-%d")
         return response_data
