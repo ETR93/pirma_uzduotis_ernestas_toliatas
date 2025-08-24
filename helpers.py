@@ -34,6 +34,22 @@ def calculate_average_temperature_for_night(data):
         'average_night_temperature': round(data_night['airTemperature'].mean().item(), 2),
     }
 
+def drop_weekend_date_if_there_is_more_than_one(list_of_dates):
+    dates = [datetime.strptime(d, "%Y-%m-%d") for d in list_of_dates]
+
+    result = []
+    i = 0
+    while i < len(dates):
+        if i + 1 < len(dates) and dates[i + 1] == dates[i] + timedelta(days=1):
+            result.append(dates[i])
+            i += 2
+        else:
+            result.append(dates[i])
+            i += 1
+
+    result = [d.strftime("%Y-%m-%d") for d in result]
+    return result
+
 def check_weekend_for_rain(data):
     weekend_days = []
     start_date = datetime.strptime(data.iloc[0]['date'], "%Y-%m-%d")
@@ -47,7 +63,7 @@ def check_weekend_for_rain(data):
     weekend_hours_with_rain = day_weather[day_weather["conditionCode"].str.contains("rain", na=False)]
     week_days_with_rain = weekend_hours_with_rain['date'].drop_duplicates().tolist()
 
-    return {"amount_of_rainy_days": len(week_days_with_rain)}
+    return {"amount_of_rainy_days": len(drop_weekend_date_if_there_is_more_than_one(week_days_with_rain))}
 
 def concat_last_next_week_data(historical_data, forecast_data):
     last_week_date = datetime.strftime(datetime.now() - timedelta(7), '%Y-%m-%d')
