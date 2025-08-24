@@ -2,7 +2,7 @@ import time
 
 import pandas as pd
 from datetime import datetime, timedelta
-
+from matplotlib import pyplot as plt
 
 def check_amount_of_requests(amount_of_requests):
     amount_of_requests += 1
@@ -31,7 +31,7 @@ def calculate_average_temperature_for_night(data):
                            (data['observationTimeUtc'].dt.time <= pd.to_datetime("08:00:00").time()))
     data_night = data[df_splited_to_night]
     return {
-        'average_night_temperature': data_night['airTemperature'].mean().item(),
+        'average_night_temperature': round(data_night['airTemperature'].mean().item(), 2),
     }
 
 def check_weekend_for_rain(data):
@@ -44,7 +44,7 @@ def check_weekend_for_rain(data):
             weekend_days.append(current_date.date().isoformat())
         current_date += timedelta(days=1)
     day_weather = data[data['date'].isin(weekend_days)]
-    weekend_hours_with_rain = day_weather[day_weather["conditionCode"].str.contains("rain")]
+    weekend_hours_with_rain = day_weather[day_weather["conditionCode"].str.contains("rain", na=False)]
     week_days_with_rain = weekend_hours_with_rain['date'].drop_duplicates().tolist()
 
     return {"amount_of_rainy_days": len(week_days_with_rain)}
@@ -76,3 +76,42 @@ def interpoliate_data_by_five_minutes(historical_data, forecast_data):
     forecast_data_air_temperatures_df_5min['airTemperature'] = forecast_data_air_temperatures_df_5min[
         'airTemperature'].interpolate(method='time')
     return historical_data_air_temperatures_df_5min, forecast_data_air_temperatures_df_5min
+
+def load_graphs_data(avg_year_temperatute_humidity, avg_temperature_for_a_day, avg_temperature_for_a_night,
+                    amount_of_rainy_days):
+    x = list(avg_year_temperatute_humidity.keys())
+    y = [avg_year_temperatute_humidity[row] for row in avg_year_temperatute_humidity]
+    x.append(list(avg_temperature_for_a_day.keys())[0])
+    y.append(avg_temperature_for_a_day['average_day_temperature'])
+    x.append(list(avg_temperature_for_a_night.keys())[0])
+    y.append(avg_temperature_for_a_night['average_night_temperature'])
+    x.append(list(amount_of_rainy_days.keys())[0])
+    y.append(amount_of_rainy_days['amount_of_rainy_days'])
+
+    return x, y
+
+def draw_weather_analysis_graph(x, y):
+    window, graph = plt.subplots(figsize=(16, 8))
+    bars = graph.bar(x, y, label="Data results")
+    for bar in bars:
+        height = bar.get_height()
+        graph.text(
+            bar.get_x() + bar.get_width() / 2,
+            height,
+            f'{height}',
+            ha='center', va='bottom'
+        )
+    graph.set_title(label='Weather analysis', fontsize=20)
+    graph.set_xlabel('Results', fontsize=20)
+    graph.set_ylabel('Amount', fontsize=20)
+    plt.show()
+
+def draw_temperature_forecast_graph(x1, x2, y1, y2):
+    window, graph = plt.subplots(figsize=(16, 8))
+    graph.plot(x1, y1, label='Sensor A', marker='o', color='blue')
+    graph.plot(x2, y2, label='Sensor B', marker='s', color='red')
+    plt.xticks(rotation=45)
+    graph.set_title(label='Weather temperature forecast', fontsize=20)
+    graph.set_xlabel('Day', fontsize=20)
+    graph.set_ylabel('Temperature', fontsize=20)
+    plt.show()
